@@ -1,14 +1,24 @@
 import lab as B
 import numpy as np
-from numpy.testing import assert_allclose
-
 from mlkernels import Kernel, elwise, pairwise
+from numpy.testing import assert_allclose
+from plum import Dispatcher
 
 __all__ = ["approx", "standard_kernel_tests"]
 
+_dispatch = Dispatcher()
 
+
+@_dispatch
 def approx(x, y, rtol=1e-12, atol=1e-12):
     assert_allclose(B.dense(x), B.dense(y), rtol=rtol, atol=atol)
+
+
+@_dispatch
+def approx(x: tuple, y: tuple, **kw_args):
+    assert len(x) == len(y)
+    for xi, yi in zip(x, y):
+        approx(xi, yi)
 
 
 def standard_kernel_tests(
@@ -18,6 +28,7 @@ def standard_kernel_tests(
     dtype=np.float64,
     f1=None,
     f2=None,
+    pd=True,
 ):
     if shapes is None:
         shapes = [
@@ -48,6 +59,11 @@ def standard_kernel_tests(
             approx(f1(x1), f2(x1))
 
         # Check `pairwise`.
+
+        # Check positive definiteness.
+        if pd:
+            B.chol(k(x1))
+            B.chol(k(x2))
 
         # Check argument duplication.
         approx(pairwise(k, x1, x1), pairwise(k, x1))
